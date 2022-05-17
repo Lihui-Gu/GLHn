@@ -39,10 +39,10 @@ def get_matrix():
     while(row < temp.shape[0]):
         col = 0
         while(col < temp.shape[1]):
-        value = (matrix[row] * matrix[col]).sum()
-        temp[col][row] = value
-        temp[row][col] = value
-        col = col + 1
+            value = (matrix[row] * matrix[col]).sum()
+            temp[col][row] = value
+            temp[row][col] = value
+            col = col + 1
         row = row + 1
     row = 0
     new_temp = np.zeros((temp.shape[0], temp.shape[0]))
