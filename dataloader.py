@@ -1,11 +1,17 @@
 import torch
 import numpy as np
 class DataLoader:
-    def __init__(self, df_feature, df_label, df_stock_index):
+    def __init__(self, df_feature, df_label, df_stock_index, device = None):
         assert len(df_feature) == len(df_label)
         self.df_feature = df_feature.values
         self.df_label = df_label.values
         self.df_stock_index = df_stock_index
+
+
+        self.df_feature = torch.tensor(self.df_feature, dtype=torch.float, device=device)
+        self.df_label = torch.tensor(self.df_label, dtype=torch.float, device=device)
+        self.df_market_value = torch.tensor(self.df_market_value, dtype=torch.float, device=device)
+        self.df_stock_index = torch.tensor(self.df_stock_index, dtype=torch.long, device=device)
 
         self.index = df_label.index
         self.daily_count = df_label.groupby(level=0).size().values
