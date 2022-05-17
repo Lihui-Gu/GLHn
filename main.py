@@ -11,6 +11,10 @@ from dataloader import DataLoader
 from model import GLHn
 import pandas as pd
 from tqdm import tqdm
+import torch
+# 引入torch.nn并指定别名
+import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
