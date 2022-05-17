@@ -24,6 +24,8 @@ def pprint(*args):
     time = '['+str(datetime.datetime.utcnow()+
                     datetime.timedelta(hours=8))[:19]+'] -'
     print(time, *args, flush=True)
+    with open('GLHn_log.txt', 'a') as f:
+        print(time, *args, flush=True, file=f)
 
 
 def get_matrix():
@@ -49,6 +51,24 @@ def get_matrix():
         row = row + 1
         return new_temp
 
+
+def metric_fn(preds):
+    preds = preds[~np.isnan(preds['label'])]
+    precision = {}
+    recall = {}
+    temp = preds.groupby(level='datetime').apply(lambda x: x.sort_values(by='score', ascending=False))
+    if len(temp.index[0]) > 2:
+        temp = temp.reset_index(level =0).drop('datetime', axis = 1)
+        
+    for k in [1, 3, 5, 10, 20, 30, 50]:
+        # 有多少类判别正确
+        precision[k] = temp.groupby(level='datetime').apply(lambda x:((x.score[:k] * x.label[:k])>0).sum()/k).mean()
+        # 预测为涨的有多少是真的涨
+        recall[k] = temp.groupby(level='datetime').apply(lambda x:((x.score[:k]>0) * (x.label[:k]>0)).sum()/(x.score[:k]>0).sum()).mean()
+
+    ic = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score)).mean()
+    rank_ic = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score, method='spearman')).mean()
+    return precision, recall, ic, rank_ic
 
 def train_epoch(net, train_loader):
     new_temp = get_matrix()
