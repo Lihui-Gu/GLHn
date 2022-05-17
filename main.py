@@ -49,8 +49,8 @@ def get_matrix():
     while(row < temp.shape[0]):
         col = 0
         while(col < temp.shape[0]):
-        new_temp[row][col] = temp[row][col] * temp[row][col] / (temp[row][row] * temp[col][col])
-        col = col + 1
+            new_temp[row][col] = temp[row][col] * temp[row][col] / (temp[row][row] * temp[col][col])
+            col = col + 1
         row = row + 1
         return new_temp
 
