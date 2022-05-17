@@ -12,6 +12,9 @@ from model import GLHn
 import pandas as pd
 from tqdm import tqdm
 import torch.optim as optim
+
+device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+
 def mse(pred, label):
     loss = (pred - label) ** 2
     return torch.mean(loss)
@@ -133,12 +136,13 @@ def main():
 
     stock_index = np.load('stock_index.npy', allow_pickle=True).item()
     df_train['stock_index'] = df_train.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
-    train_loader = DataLoader(df_train["feature"], df_train["label"], df_train['stock_index'])
+    train_loader = DataLoader(df_train["feature"], df_train["label"], df_train['stock_index'], device)
     df_valid['stock_index'] = df_valid.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
-    valid_loader = DataLoader(df_valid["feature"], df_valid["label"], df_valid['stock_index'])
+    valid_loader = DataLoader(df_valid["feature"], df_valid["label"], df_valid['stock_index'], device)
     df_test['stock_index'] = df_test.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
-    test_loader = DataLoader(df_test["feature"], df_test["label"], df_test['stock_index'])
-
+    test_loader = DataLoader(df_test["feature"], df_test["label"], df_test['stock_index'], device)
+    net = GLHn()
+    net.to(device)
     num_epoch = 200
     for epoch in range(num_epoch):
         pprint('Running', 'GLH','Epoch:', epoch)
@@ -158,4 +162,8 @@ def main():
         pprint('Train Recall: ', train_recall)
         pprint('Valid Recall: ', val_recall)
         pprint('Test Recall: ', test_recall)
+
+
+if __name__ == '__main__':
+    main()
     
