@@ -101,17 +101,17 @@ def test_epoch(net, test_loader):
     for i, slc in tqdm(test_loader.iter_daily(), total=test_loader.daily_length):
         feature, label, stock_index, index = test_loader.get(slc)
         with torch.no_grad():
-        feature = torch.tensor(feature, dtype = torch.float)
-        label = torch.tensor(label, dtype = torch.float)
-        batch_concept_matrix = new_temp[stock_index.values]
-        batch_concept_matrix = batch_concept_matrix[:,stock_index.values]
-        batch_concept_matrix = torch.tensor(batch_concept_matrix, dtype = torch.float)
-        # print(feature)
-        batch_concept_matrix = batch_concept_matrix.reshape(1, 1, len(batch_concept_matrix), -1)
-        pred = net(feature, batch_concept_matrix)
-        loss = loss_fn(pred, label)
-        preds.append(pd.DataFrame({ 'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
-        losses.append(loss.item())
+            feature = torch.tensor(feature, dtype = torch.float)
+            label = torch.tensor(label, dtype = torch.float)
+            batch_concept_matrix = new_temp[stock_index.values]
+            batch_concept_matrix = batch_concept_matrix[:,stock_index.values]
+            batch_concept_matrix = torch.tensor(batch_concept_matrix, dtype = torch.float)
+            # print(feature)
+            batch_concept_matrix = batch_concept_matrix.reshape(1, 1, len(batch_concept_matrix), -1)
+            pred = net(feature, batch_concept_matrix)
+            loss = loss_fn(pred, label)
+            preds.append(pd.DataFrame({ 'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
+            losses.append(loss.item())
     #evaluate
     preds = pd.concat(preds, axis=0)
     precision, recall, ic, rank_ic = metric_fn(preds)
