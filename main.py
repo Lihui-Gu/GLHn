@@ -1,3 +1,4 @@
+from unicodedata import name
 import qlib
 # regiodatetimeG_CN, REG_US]
 from qlib.config import REG_US, REG_CN
@@ -6,7 +7,10 @@ provider_uri = "~/.qlib/qlib_data/cn_data"  # target_dir
 qlib.init(provider_uri=provider_uri, region=REG_CN)
 from qlib.data.dataset import DatasetH
 from qlib.data.dataset.handler import DataHandlerLP
+
 import datetime
+import os
+os.chdir(os.path.join("GLHn"))
 from dataloader import DataLoader
 from model import GLHn
 import pandas as pd
@@ -57,7 +61,10 @@ def get_matrix():
             new_temp[row][col] = temp[row][col] * temp[row][col] / (temp[row][row] * temp[col][col])
             col = col + 1
         row = row + 1
-        return new_temp
+    b = new_temp.sum(axis = 1)
+    for i in range(new_temp.shape[0]):
+      new_temp[i] = new_temp[i] / b[i]
+    return new_temp
 
 
 def metric_fn(preds):
@@ -68,29 +75,33 @@ def metric_fn(preds):
     if len(temp.index[0]) > 2:
         temp = temp.reset_index(level =0).drop('datetime', axis = 1)
         
-    for k in [1, 3, 5, 10, 20, 30, 50]:
-        # 有多少类判别正确
-        precision[k] = temp.groupby(level='datetime').apply(lambda x:((x.score[:k] * x.label[:k])>0).sum()/k).mean()
-        # 预测为涨的有多少是真的涨
-        recall[k] = temp.groupby(level='datetime').apply(lambda x:((x.score[:k]>0) * (x.label[:k]>0)).sum()/(x.score[:k]>0).sum()).mean()
+    for k in [1, 3, 5, 10, 20, 30, 50, 100]:
+        precision[k] = temp.groupby(level='datetime').apply(lambda x:(x.label[:k]>0).sum()/k).mean()
+        recall[k] = temp.groupby(level='datetime').apply(lambda x:(x.label[:k]>0).sum()/(x.label>0).sum()).mean()
 
     ic = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score)).mean()
     rank_ic = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score, method='spearman')).mean()
+
     return precision, recall, ic, rank_ic
 
-def train_epoch(net, train_loader):
+def train_epoch(net, train_loader, device):
     new_temp = get_matrix()
+
     net.train()
     optimizer = optim.Adam(net.parameters())
     for i, slc in tqdm(train_loader.iter_batch(), total=train_loader.batch_length):
         feature, label, stock_index, _ = train_loader.get(slc)
         feature = torch.tensor(feature, dtype = torch.float)
         label = torch.tensor(label, dtype = torch.float)
-        batch_concept_matrix = new_temp[stock_index.values]
+        batch_concept_matrix = new_temp[stock_index.values, :]
         batch_concept_matrix = batch_concept_matrix[:,stock_index.values]
         batch_concept_matrix = torch.tensor(batch_concept_matrix, dtype = torch.float)
         batch_concept_matrix = batch_concept_matrix.reshape(1, 1, len(batch_concept_matrix), -1)
+        feature = feature.to(device)
+        batch_concept_matrix = batch_concept_matrix.to(device)
         pred = net(feature, batch_concept_matrix)
+        pred = pred.to(device)
+        label = label.to(device)
         loss = loss_fn(pred, label)
         optimizer.zero_grad()
         loss.backward()
@@ -98,7 +109,7 @@ def train_epoch(net, train_loader):
         optimizer.step()
 
 
-def test_epoch(net, test_loader):
+def test_epoch(net, test_loader, device):
     new_temp = get_matrix()
     net.eval()
     losses = []
@@ -113,7 +124,11 @@ def test_epoch(net, test_loader):
             batch_concept_matrix = torch.tensor(batch_concept_matrix, dtype = torch.float)
             # print(feature)
             batch_concept_matrix = batch_concept_matrix.reshape(1, 1, len(batch_concept_matrix), -1)
+            feature = feature.to(device)
+            batch_concept_matrix = batch_concept_matrix.to(device)
             pred = net(feature, batch_concept_matrix)
+            pred = pred.to(device)
+            label = label.to(device)
             loss = loss_fn(pred, label)
             preds.append(pd.DataFrame({ 'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
             losses.append(loss.item())
@@ -139,7 +154,7 @@ def main():
     dataset = DatasetH(hanlder,segments)
     df_train, df_valid, df_test = dataset.prepare( ["train", "valid", "test"], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L,)
 
-    stock_index = np.load('stock_index.npy', allow_pickle=True).item()
+    stock_index = np.load('./data/stock_index.npy', allow_pickle=True).item()
     df_train['stock_index'] = df_train.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
     train_loader = DataLoader(df_train["feature"], df_train["label"], df_train['stock_index'], device)
     df_valid['stock_index'] = df_valid.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
@@ -148,15 +163,15 @@ def main():
     test_loader = DataLoader(df_test["feature"], df_test["label"], df_test['stock_index'], device)
     net = GLHn()
     net.to(device)
-    num_epoch = 200
+    num_epoch = 1
     for epoch in range(num_epoch):
         pprint('Running', 'GLH','Epoch:', epoch)
         pprint('training...')
-        train_epoch(net, train_loader)
+        train_epoch(net, train_loader, device)
         pprint('evaluating...')
-        train_loss, train_score, train_precision, train_recall, train_ic, train_rank_ic = test_epoch(net, train_loader)
-        val_loss, val_score, val_precision, val_recall, val_ic, val_rank_ic = test_epoch(net, valid_loader)
-        test_loss, test_score, test_precision, test_recall, test_ic, test_rank_ic = test_epoch(net, test_loader)
+        train_loss, train_score, train_precision, train_recall, train_ic, train_rank_ic = test_epoch(net, train_loader, device)
+        val_loss, val_score, val_precision, val_recall, val_ic, val_rank_ic = test_epoch(net, valid_loader, device)
+        test_loss, test_score, test_precision, test_recall, test_ic, test_rank_ic = test_epoch(net, test_loader, device)
         pprint('train_loss %.6f, valid_loss %.6f, test_loss %.6f'%(train_loss, val_loss, test_loss))
         pprint('train_score %.6f, valid_score %.6f, test_score %.6f'%(train_score, val_score, test_score))
         pprint('train_ic %.6f, valid_ic %.6f, test_ic %.6f'%(train_ic, val_ic, test_ic))
@@ -168,7 +183,5 @@ def main():
         pprint('Valid Recall: ', val_recall)
         pprint('Test Recall: ', test_recall)
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-    
