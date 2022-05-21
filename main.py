@@ -37,7 +37,7 @@ def pprint(*args):
 
 
 def get_matrix():
-    matrix = np.load('industry_concept_matrix.npy', allow_pickle=True)
+    matrix = np.load('./data/industry_concept_matrix.npy', allow_pickle=True)
     temp = np.zeros((matrix.shape[0], matrix.shape[0]))
     row = 0
     sum = 0
