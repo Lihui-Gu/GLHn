@@ -17,7 +17,8 @@
 
  <img src="picture/model.png" width = "300"  alt="模型结构" align=center />
 ## 运行
-```
+
+```bash
 python main.py
 ```
 ## 说明
