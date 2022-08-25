@@ -16,3 +16,9 @@
 比，通过实验得出利用股票之间相关性的共享信息对于模型的预测效果有一定的提升。
 
  <img src="picture/model.png" width = "300"  alt="模型结构" align=center />
+## 运行
+```
+python main.py
+```
+## 说明
+使用`qlib`工具导入股票数据，全局共享图结构信息由Tushare数据平台 https://tushare.pro/提供，在`data`文件夹下进行了处理。
