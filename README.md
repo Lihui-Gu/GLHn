@@ -21,4 +21,5 @@
 python main.py
 ```
 ## 说明
-使用`qlib`工具导入股票数据，全局共享图结构信息由Tushare数据平台 https://tushare.pro/提供，在`data`文件夹下进行了处理。
+使用`qlib`工具导入股票数据，全局共享图结构信息由Tushare数据平台 https://tushare.pro/ 
+提供，在`data`文件夹下进行了处理。
